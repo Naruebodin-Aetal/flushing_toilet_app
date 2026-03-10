@@ -6,7 +6,7 @@ class MqttService {
   final String clientId;
   final String token;
   final String secret;
-  final Function(bool) onLedStatusChanged;
+  final Function(bool) isFlushChanged;
 
   late MqttServerClient _client;
 
@@ -14,7 +14,7 @@ class MqttService {
     required this.clientId,
     required this.token,
     required this.secret,
-    required this.onLedStatusChanged,
+    required this.isFlushChanged,
   });
 
   Future<void> connect() async {
@@ -37,7 +37,10 @@ class MqttService {
     }
 
     if (_client.connectionStatus!.state == MqttConnectionState.connected) {
-      _client.subscribe('@msg/home/device_status/H', MqttQos.atMostOnce);/*แก้ตรงนี้ */
+      _client.subscribe(
+        '@msg/lab_ict_kps/sensor_data/value',
+        MqttQos.atMostOnce,
+      ); /*แก้ตรงนี้ */
       _client.updates!.listen(_onMessage);
     }
   }
@@ -50,11 +53,11 @@ class MqttService {
 
     try {
       final decoded = json.decode(payload);
-      final FlushingValue = decoded['data']['led1'];/*แก้ตรงนี้ */
+      final FlushingValue = decoded['data']['isFlushing'];
 
-      if (FlushingValue is int) {/*แก้แถวนี้ */
-        final isOn = FlushingValue == 1;
-        onLedStatusChanged(isOn);
+      if (FlushingValue is int) {
+        final isCanFlush = FlushingValue == 0;
+        isFlushChanged(isCanFlush);
       }
     } catch (e) {
       print('Error decoding JSON: $e');

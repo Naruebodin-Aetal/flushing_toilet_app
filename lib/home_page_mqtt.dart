@@ -12,27 +12,32 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   final FlushingService _service = FlushingService(); /*แก้แล้วนี้ */
   late MqttService _mqtt;
-  final String mobileClientId = ''; // of Mobile App
-  final String mobileToken = ''; // of Mobile App
-  final String mobileSecret = ''; // of Mobile App
+  final String mobileClientId =
+      '63654b3c-3aed-4575-bdea-6ae340dd9568'; // of Mobile App
+  final String mobileToken =
+      'uYFNZRPa6KAnQgS1Uvbp9kJYsQZ2Pk5L'; // of Mobile App
+  final String mobileSecret =
+      'nFPR4igYpGmYqnwat26TcX9xayv5dBFu'; // of Mobile App
 
-  bool _isCanFlushingOn = false;
-  bool _isCantFlushingOn = false;
-  bool _isWaitingResponse = false;
+  late bool isCanFlush;
 
   @override
   void initState() {
     super.initState();
+   _service.getFlushingStatus().then((status) {
+      setState(() {
+        isCanFlush = status;
+      });
+    }).catchError((error) {
+      print('Error fetching Flushing status: $error');
+    });
     _mqtt = MqttService(
       clientId: mobileClientId,
       token: mobileToken,
       secret: mobileSecret,
-      onLedStatusChanged: (status) {
+      isFlushChanged: (status) {
         setState(() {
-          print(status);
-          _isCanFlushingOn = status;
-          _isCantFlushingOn = status;
-          _isWaitingResponse = false; // Enable button again
+          isCanFlush = status;
         });
       },
     );
@@ -45,21 +50,14 @@ class _HomePageState extends State<HomePage> {
     super.dispose();
   }
 
-  Future<void> _toggleLed(String type, bool value) async {
+  Future<void> toggleFlush() async {
     setState(() {
-      _isWaitingResponse = true; // Disable button
-      if (type == "led1") {
-        /*แก้ตรงนี้ */
-        _isCanFlushingOn = value;
-      } else if (type == "led2") {
-        /*แก้ตรงนี้ */
-        _isCantFlushingOn = value;
-      }
+      isCanFlush = false;
     });
-    await _service.setFlushingStatus(type, value); /*แก้แล้วมั้ง */
+    await _service.setFlushingStatus(true);
   }
 
-  Widget CardLed(String type, bool checkvalue, [Color color = Colors.amber]) {
+  Widget CardLed([Color color = Colors.amber]) {
     return Card(
       margin: const EdgeInsets.all(10),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
@@ -69,19 +67,18 @@ class _HomePageState extends State<HomePage> {
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
           Image.asset(
-            checkvalue ? 'assets/flushingBw.jpg' : 'assets/flushing.jpg',
+            isCanFlush ? 'assets/flushingBw.jpg' : 'assets/flushing.jpg',
             width: 150,
           ),
           const SizedBox(height: 20),
           ElevatedButton(
-            onPressed:
-                _isWaitingResponse
-                    ? null
-                    : () {
-                      _toggleLed(type, !checkvalue);
-                    },
+            onPressed: isCanFlush
+                    ?() {
+                      toggleFlush();
+                    }
+                    : null,
             style: ElevatedButton.styleFrom(
-              backgroundColor: checkvalue ? color : Colors.grey,
+              backgroundColor: isCanFlush ? color : Colors.grey,
               foregroundColor: Colors.white,
               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
               shape: RoundedRectangleBorder(
@@ -89,7 +86,7 @@ class _HomePageState extends State<HomePage> {
               ),
             ),
             child: Text(
-              checkvalue ? 'Flushing' : 'Can Flushing',
+              isCanFlush ? 'Can Flushing' : 'Flushing',
               style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
           ),
@@ -110,9 +107,7 @@ class _HomePageState extends State<HomePage> {
         height: double.infinity,
         child: Row(
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: [
-            CardLed("led1", _isCanFlushingOn, Colors.green) /*แก้ตรงนี้ */,
-          ],
+          children: [CardLed(Colors.green) /*แก้ตรงนี้ */],
         ),
       ),
     );
